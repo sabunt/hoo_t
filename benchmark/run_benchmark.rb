@@ -6,7 +6,7 @@ load 'task/task.rb'
 
 def run_benchmark
   Benchmark.bm do |x|
-    x.report("check task with small data") { memory_bm {Task.new('data/data_light.txt').call} }
+    # x.report("check task with small data") { memory_bm {Task.new('data/data_light.txt').call} }
     x.report("check task with classes and objects") { memory_bm {Task.new('data/data_large.txt').call} }
   end
 end

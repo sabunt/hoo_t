@@ -9,12 +9,14 @@
 # Production-ready код;
 # Применены лучшие практики;
 
-require 'json'
+require 'Oj'
 require 'date'
 require 'pry'
 
 load 'lib/helper.rb'
 load 'lib/builder.rb'
+
+Oj.default_options = {:mode => :compat }
 
 class Task
   include Helper
@@ -28,30 +30,25 @@ class Task
     users = {}
     users[:data] ||= {}
     users[:report] ||= {}
-    unique_browsers = {}
-    session_count = 0
+    users[:browsers] ||= {}
 
-    File.foreach(path_file) do |line|
-      cols = line.split(',')
+    IO.foreach(path_file) do |line|
+      cols = line.chomp.split(',')
 
       if cols[0] == 'user'
         users[:data][cols[1].to_sym]
         users[:data][cols[1].to_sym] = User.new(attributes: parse_user(cols))
-        
-      elsif cols[0] == 'session'
-        session_count += 1
-        users[:data][cols[1].to_sym].attributes[:sessions] << parse_session(cols)
-        unique_browsers[cols[3].upcase] = true
       else
-        next 
+        users[:data][cols[1].to_sym].attributes[:sessions] << parse_session(cols)
+        users[:browsers][cols[3].upcase] = true
       end
     end
-    
+
     users[:report] = {
       'totalUsers': users[:data].size,
-      'uniqueBrowsersCount': unique_browsers.size,
-      'totalSessions': session_count,
-      'allBrowsers': unique_browsers.keys.sort.join(',')
+      'uniqueBrowsersCount': users[:browsers].size,
+      'totalSessions': users[:data].values.map { |u| u.attributes[:sessions].size }.sum,
+      'allBrowsers': users[:browsers].keys.sort.join(',')
     }
 
     # Статистика по пользователям
@@ -74,7 +71,9 @@ class Task
         'dates' => user[1].date.sort.reverse
       }
     end
-    File.binwrite('result.json', users[:report].to_json + "\n")
+    users[:data] = {}
+    users[:browsers] = {}
+    IO.binwrite('result.json', Oj.dump(users[:report], symbol_keys: false)+ "\n")
   end
   #   Builder.new(users, session_count, unique_browsers).call
   # end

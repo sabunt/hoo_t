@@ -15,7 +15,7 @@ module Helper
       :session_id => fields[2],
       :browser => fields[3].upcase,
       :time => fields[4].to_i,
-      :date => fields[5].chomp,
+      :date => fields[5],
     }
   end
 end
