@@ -14,7 +14,6 @@ require 'date'
 require 'pry'
 
 load 'lib/helper.rb'
-load 'lib/builder.rb'
 
 Oj.default_options = {:mode => :compat }
 
@@ -28,53 +27,50 @@ class Task
 
   def call
     users = {}
-    users[:data] ||= {}
-    users[:report] ||= {}
-    users[:browsers] ||= {}
+    report ||= {}
+    browsers ||= {}
+    session_counter =0
 
-    IO.foreach(path_file) do |line|
+    IO.foreach(path_file).each_entry do |line|
       cols = line.chomp.split(',')
 
       if cols[0] == 'user'
-        users[:data][cols[1].to_sym]
-        users[:data][cols[1].to_sym] = User.new(attributes: parse_user(cols))
+        users[cols[1].to_sym]
+        users[cols[1].to_sym] = parse_user(cols)
       else
-        users[:data][cols[1].to_sym].attributes[:sessions] << parse_session(cols)
-        users[:browsers][cols[3].upcase] = true
+        session_counter +=1
+        users[cols[1].to_sym][:sessions] << parse_session(cols)
+        browsers[cols[3].upcase] = true
       end
     end
 
-    users[:report] = {
-      'totalUsers': users[:data].size,
-      'uniqueBrowsersCount': users[:browsers].size,
-      'totalSessions': users[:data].values.map { |u| u.attributes[:sessions].size }.sum,
-      'allBrowsers': users[:browsers].keys.sort.join(',')
+    report = {
+      'totalUsers': users.size,
+      'uniqueBrowsersCount': browsers.size,
+      'totalSessions': session_counter,
+      'allBrowsers': browsers.map{|k,v| k}.sort.join(',')
     }
 
     # Статистика по пользователям
-    users[:data].each do |user|
-      users[:report][:usersStats] ||= {}
-      users[:report][:usersStats]["#{user[1].attributes[:first_name]} #{user[1].attributes[:last_name]}"] = {
+    users.each do |user|
+      report[:usersStats] ||= {}      
+      report[:usersStats]["#{user[1][:first_name]} #{user[1][:last_name]}"] = {
         # Собираем количество сессий по пользоfвателям
-        'sessionsCount' => user[1].attributes[:sessions].size,
+        'sessionsCount' => user[1][:sessions].size,
         # Собираем количество времени по пользователям
-        'totalTime' => "#{user[1].time.sum} min.",
+        'totalTime' => "#{user[1][:sessions].map{|s| s[:time].to_i}.sum} min.",
         # Выбираем самую длинную сессию пользователя
-        'longestSession' => "#{user[1].time.max} min.",
+        'longestSession' => "#{user[1][:sessions].map{|s| s[:time].to_i}.max} min.",
         # Браузеры пользователя через запятую
-        'browsers' => user[1].browser.join(', '),
+        'browsers' => user[1][:sessions].map{|s| s[:browser].upcase}.sort.join(', '),
         # Хоть раз использовал IE?
-        'usedIE' => user[1].browser.any? { |b| b =~ /INTERNET EXPLORER/ },
+        'usedIE' => user[1][:sessions].map{|s| s[:browser].upcase}.any? { |b| b =~ /INTERNET EXPLORER/ },
         # Всегда использовал только Chrome?
-        'alwaysUsedChrome' => user[1].browser.all? { |b| b =~ /CHROME/ },
+        'alwaysUsedChrome' => user[1][:sessions].map{|s| s[:browser].upcase}.all? { |b| b =~ /CHROME/ },
         # Даты сессий через запятую в обратном порядке в формате iso8601
-        'dates' => user[1].date.sort.reverse
+        'dates' => user[1][:sessions].map{|s| s[:date]}.sort.reverse
       }
     end
-    users[:data] = {}
-    users[:browsers] = {}
-    IO.binwrite('result.json', Oj.dump(users[:report], symbol_keys: false)+ "\n")
+    IO.binwrite('result.json', Oj.dump(report, symbol_keys: false)+ "\n")
   end
-  #   Builder.new(users, session_count, unique_browsers).call
-  # end
 end

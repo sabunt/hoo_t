@@ -18,4 +18,20 @@ module Helper
       :date => fields[5],
     }
   end
+
+  def time(user)
+    @time ||= all_sessions(user).map {|s| s[:time].to_i}
+  end
+
+  def browser(user)
+    @browser ||= all_sessions(user).map {|s| s[:browser].upcase}.sort
+  end
+
+  def date(user)
+    @date ||= all_sessions(user).map{|s| s[:date]}
+  end
+
+  def all_sessions(user)
+   @all_sessions ||= user[:sessions]
+  end
 end
