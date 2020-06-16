@@ -1,7 +1,12 @@
 # Task for Hoodies
 
-## For check banchmarks
-```gunzip -k data/data_large.txt.gz
+## For banchmark
+
+### Unzip lagre file
+```gunzip -k data/data_large.txt.gz```
+
+## Check banchmarks
+```
 irb
 load "benchmark/run_benchmark.rb"
 run_benchmark
